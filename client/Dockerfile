@@ -1,0 +1,22 @@
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+COPY . .
+
+# Injeta variáveis de ambiente no momento do build
+ARG VITE_AGENT_API_URL
+ARG VITE_DASHBOARD_API_URL
+ENV VITE_AGENT_API_URL=$VITE_AGENT_API_URL
+ENV VITE_DASHBOARD_API_URL=$VITE_DASHBOARD_API_URL
+
+RUN npm run build
+
+FROM node:20-alpine
+WORKDIR /app
+RUN npm install -g serve
+COPY --from=builder /app/dist ./dist
+EXPOSE 5173
+CMD ["serve", "-s", "dist", "-l", "5173"]

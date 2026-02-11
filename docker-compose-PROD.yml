@@ -1,0 +1,125 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: db_${INSTANCE_ID}
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-aivoice}
+    networks:
+      - internal_net
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  orchestrator:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/aivoice-backend:${INSTANCE_ID}
+    container_name: backend_${INSTANCE_ID}
+    restart: always
+    networks:
+      - proxy
+      - internal_net
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      - DASHBOARD_INTERNAL_URL=http://dash-server:8081
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.orchestrator-${INSTANCE_ID}.rule=Host(`${DOMAIN_API}`)"
+      - "traefik.http.routers.orchestrator-${INSTANCE_ID}.entrypoints=websecure"
+      - "traefik.http.routers.orchestrator-${INSTANCE_ID}.tls.certresolver=myresolver"
+      - "traefik.http.services.orchestrator-${INSTANCE_ID}.loadbalancer.server.port=8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  dash-server:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/aivoice-dashboard-server:${INSTANCE_ID}
+    container_name: dashserver_${INSTANCE_ID}
+    restart: always
+    networks:
+      - internal_net
+      - proxy
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.dashserver-${INSTANCE_ID}.rule=Host(`${DOMAIN_DASH_API}`)"
+      - "traefik.http.routers.dashserver-${INSTANCE_ID}.entrypoints=websecure"
+      - "traefik.http.routers.dashserver-${INSTANCE_ID}.tls.certresolver=myresolver"
+      - "traefik.http.services.dashserver-${INSTANCE_ID}.loadbalancer.server.port=8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      meilisearch:
+        condition: service_started
+
+  client:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/aivoice-client:${INSTANCE_ID}
+    container_name: website_${INSTANCE_ID}
+    restart: always
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.client-${INSTANCE_ID}.rule=Host(`${DOMAIN_WEBSITE}`)"
+      - "traefik.http.routers.client-${INSTANCE_ID}.entrypoints=websecure"
+      - "traefik.http.routers.client-${INSTANCE_ID}.tls.certresolver=myresolver"
+      - "traefik.http.services.client-${INSTANCE_ID}.loadbalancer.server.port=5173"
+    depends_on:
+      - orchestrator
+
+  dashboard:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/aivoice-dashboard:${INSTANCE_ID}
+    container_name: dashboard_${INSTANCE_ID}
+    restart: always
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.dashboard-${INSTANCE_ID}.rule=Host(`${DOMAIN_DASHBOARD}`)"
+      - "traefik.http.routers.dashboard-${INSTANCE_ID}.entrypoints=websecure"
+      - "traefik.http.routers.dashboard-${INSTANCE_ID}.tls.certresolver=myresolver"
+      - "traefik.http.services.dashboard-${INSTANCE_ID}.loadbalancer.server.port=5174"
+    depends_on:
+      - dash-server
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.35.0
+    container_name: meilisearch_${INSTANCE_ID}
+    restart: always
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    environment:
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY}
+      - MEILI_ENV=production
+    networks:
+      - internal_net
+      - proxy
+    volumes:
+      - meilisearch_data:/meili_data
+    deploy:
+      resources:
+        limits:
+          memory: 2Gb
+
+networks:
+  proxy:
+    external: true
+  internal_net:
+
+volumes:
+  postgres_data:
+  meilisearch_data:

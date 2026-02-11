@@ -1,0 +1,86 @@
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: db_${INSTANCE_ID}
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-aivoice}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  orchestrator:
+    build: ./server
+    container_name: backend_${INSTANCE_ID}
+    ports:
+      - "${PORT_BACKEND:-8080}:8080"
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgres://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-aivoice}
+      - DASHBOARD_INTERNAL_URL=http://dash-server:8081
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  client:
+    build:
+      context: ./client
+      args:
+        - VITE_AGENT_API_URL=http://localhost:${PORT_BACKEND:-8080}
+        - VITE_DASHBOARD_API_URL=http://localhost:${PORT_DASHSERVER:-8081}
+        - VITE_INSTANCE_CLIENT_NAME=${INSTANCE_CLIENT_NAME:-aiVoice}
+    container_name: website_${INSTANCE_ID}
+    ports:
+      - "${PORT_CLIENT:-5173}:5173"
+    depends_on:
+      - orchestrator
+
+  dash-server:
+    build: ./dashboard-server
+    container_name: dashserver_${INSTANCE_ID}
+    ports:
+      - "${PORT_DASHSERVER:-8081}:8081"
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgres://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-aivoice}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      meilisearch:
+        condition: service_started
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile.prod
+      args:
+        - VITE_API_URL=http://localhost:${PORT_DASHSERVER:-8081}/api
+    container_name: dashboard_${INSTANCE_ID}
+    ports:
+      - "${PORT_DASHBOARD:-5174}:5174"
+    depends_on:
+      - dash-server
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.35.0
+    container_name: meilisearch_${INSTANCE_ID}
+    ports:
+      - "${PORT_MEILI:-7700}:7700"
+    environment:
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY:-masterKey123}
+      - MEILI_ENV=development
+    volumes:
+      - meilisearch_data:/meili_data
+
+volumes:
+  postgres_data:
+  meilisearch_data:

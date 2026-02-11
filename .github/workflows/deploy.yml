@@ -1,0 +1,103 @@
+name: CI/CD aiVoiceV3
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Login no GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GH_PAT }}
+
+      - name: Build e Push - Backend (Orchestrator)
+        run: |
+          # Gera tag dinâmica baseada no ID da instância para isolamento total
+          export INSTANCE_TAG=$(echo "${{ vars.INSTANCE_ID }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]//g')
+          docker build -t ghcr.io/${{ github.repository_owner }}/aivoice-backend:$INSTANCE_TAG ./server
+          docker push ghcr.io/${{ github.repository_owner }}/aivoice-backend:$INSTANCE_TAG
+
+      - name: Build e Push - Client (Website)
+        run: |
+          export INSTANCE_TAG=$(echo "${{ vars.INSTANCE_ID }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]//g')
+          docker build \
+            --build-arg VITE_AGENT_API_URL=https://${{ secrets.DOMAIN_API }} \
+            --build-arg VITE_DASHBOARD_API_URL=https://${{ secrets.DOMAIN_DASH_API }} \
+            --build-arg VITE_INSTANCE_ID=${{ vars.INSTANCE_ID }} \
+            --build-arg VITE_INSTANCE_CLIENT_NAME="${{ vars.INSTANCE_CLIENT_NAME }}" \
+            -t ghcr.io/${{ github.repository_owner }}/aivoice-client:$INSTANCE_TAG ./client
+          docker push ghcr.io/${{ github.repository_owner }}/aivoice-client:$INSTANCE_TAG
+
+      - name: Build e Push - Dashboard (Frontend)
+        run: |
+          export INSTANCE_TAG=$(echo "${{ vars.INSTANCE_ID }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]//g')
+          docker build \
+            --build-arg VITE_API_URL=https://${{ secrets.DOMAIN_DASH_API }}/api \
+            --build-arg VITE_INSTANCE_ID=${{ vars.INSTANCE_ID }} \
+            --build-arg VITE_INSTANCE_CLIENT_NAME="${{ vars.INSTANCE_CLIENT_NAME }}" \
+            -t ghcr.io/${{ github.repository_owner }}/aivoice-dashboard:$INSTANCE_TAG ./dashboard -f ./dashboard/Dockerfile.prod
+          docker push ghcr.io/${{ github.repository_owner }}/aivoice-dashboard:$INSTANCE_TAG
+
+      - name: Build e Push - DashServer (API)
+        run: |
+          export INSTANCE_TAG=$(echo "${{ vars.INSTANCE_ID }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]//g')
+          docker build -t ghcr.io/${{ github.repository_owner }}/aivoice-dashboard-server:$INSTANCE_TAG ./dashboard-server
+          docker push ghcr.io/${{ github.repository_owner }}/aivoice-dashboard-server:$INSTANCE_TAG
+
+      - name: Deploy via SSH no Servidor
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            
+            # Exporta e Sanitiza o nome do projeto (Docker exige apenas minúsculas e caracteres básicos)
+            export INSTANCE_ID_RAW="${{ vars.INSTANCE_ID }}"
+            export INSTANCE_ID=$(echo "$INSTANCE_ID_RAW" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]//g')
+            
+            export INSTANCE_CLIENT_NAME="${{ vars.INSTANCE_CLIENT_NAME }}"
+            export DOMAIN_WEBSITE="${{ secrets.DOMAIN_WEBSITE }}"
+            export DOMAIN_API="${{ secrets.DOMAIN_API }}"
+            export DOMAIN_DASHBOARD="${{ secrets.DOMAIN_DASHBOARD }}"
+            export DOMAIN_DASH_API="${{ secrets.DOMAIN_DASH_API }}"
+            export GITHUB_REPOSITORY_OWNER="${{ github.repository_owner }}"
+            
+            # Define o nome do projeto para que redes/volumes sejam únicos (Isolamento Real)
+            export COMPOSE_PROJECT_NAME="aivoice_$INSTANCE_ID"
+            
+            mkdir -p /opt/$INSTANCE_ID_RAW
+            cd /opt/$INSTANCE_ID_RAW
+            
+            # Baixa arquivos atualizados diretamente do GitHub
+            echo "📥 Atualizando arquivos de configuração para $INSTANCE_ID..."
+            
+            mkdir -p database
+            curl -f -H "Authorization: token ${{ secrets.GH_PAT }}" -H "Accept: application/vnd.github.v3.raw" -L -o docker-compose-PROD.yml https://api.github.com/repos/${{ github.repository }}/contents/docker-compose-PROD.yml
+            curl -f -H "Authorization: token ${{ secrets.GH_PAT }}" -H "Accept: application/vnd.github.v3.raw" -L -o database/init.sql https://api.github.com/repos/${{ github.repository }}/contents/database/init.sql
+            
+            echo "${{ secrets.GH_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose -f docker-compose-PROD.yml pull
+            
+            echo "⚠️ REINICIANDO EM MODO COLD-START: ${{ vars.INSTANCE_ID }} ⚠️"
+            # Remove containers, redes e VOLUMES para forçar o init.sql e limpar caches
+            docker compose -f docker-compose-PROD.yml down -v --remove-orphans
+            
+            docker compose -f docker-compose-PROD.yml up -d --remove-orphans
+            
+            docker image prune -f
+            echo "✅ Deploy finalizado para ${{ vars.INSTANCE_ID }}!"
+
+            # Verificação extra de conectividade interna
+            if ! docker compose -f docker-compose-PROD.yml exec -T orchestrator wget --spider -q http://localhost:8080/health; then
+               echo "⚠️ AVISO: Backend (orchestrator) parece não estar respondendo na porta 8080 internamente."
+            fi

@@ -1,0 +1,45 @@
+name: Debug Logs (Manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fetch-logs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch Remote Logs
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/aiVoiceV3
+            echo "=========================================="
+            echo "🛠️ DEBUG INFO: INIT.SQL (First 20 lines)"
+            echo "=========================================="
+            cat database/init.sql | head -n 20
+            
+            echo ""
+            echo "=========================================="
+            echo "🐳 DOCKER PROCESSES"
+            echo "=========================================="
+            docker compose -f docker-compose-PROD.yml ps
+            
+            echo ""
+            echo "=========================================="
+            echo "📜 SERVER LOGS (Orchestrator) - Last 200 lines"
+            echo "=========================================="
+            docker compose -f docker-compose-PROD.yml logs --tail=200 orchestrator
+            
+            echo ""
+            echo "=========================================="
+            echo "📜 DASHBOARD SERVER LOGS - Last 200 lines"
+            echo "=========================================="
+            docker compose -f docker-compose-PROD.yml logs --tail=200 dashboard-server
+            
+            echo ""
+            echo "=========================================="
+            echo "📜 POSTGRES LOGS - Last 100 lines"
+            echo "=========================================="
+            docker compose -f docker-compose-PROD.yml logs --tail=100 postgres
