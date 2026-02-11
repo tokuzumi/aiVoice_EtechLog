@@ -9,6 +9,9 @@ O **aiVoice v3.5** é uma implementação de referência completa para agentes d
 > **REGRA DE OURO:**
 > O modelo configurado é o **`models/gemini-2.5-flash-native-audio-preview-12-2025`**.
 > **NÃO ALTERE ESTE VALOR** no código do Orchestrator.
+# EtechLog - Orchestrator V3
+> [!NOTE]
+> Última atualização: 2026-02-11 - Estabilização de Multi-Tenant e DNS Produtivo.
 > Esta versão é a que garante a latência ultra-baixa e a estabilidade nativa de áudio implementada nesta arquitetura.
 
 ## 🚀 Arquitetura Multi-Tenant v3.5 (Enterprise Ready)
