@@ -117,6 +117,10 @@ jobs:
             JWT_SECRET=$JWT_SECRET
             MEILI_MASTER_KEY=$MEILI_MASTER_KEY
             
+            # API Keys (AI Services)
+            OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}"
+            GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}"
+            
             # Portas Dinâmicas (Se não definidas, usa defaults do docker-compose)
             # (Adicione aqui se precisar controlar portas via GitHub Vars)
             EOF
