@@ -29,10 +29,12 @@ jobs:
         run: |
           export INSTANCE_TAG=$(echo "${{ vars.INSTANCE_ID }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]//g')
           docker build \
-            --build-arg VITE_AGENT_API_URL=https://${{ secrets.DOMAIN_API }} \
-            --build-arg VITE_DASHBOARD_API_URL=https://${{ secrets.DOMAIN_DASH_API }} \
+            --build-arg VITE_AGENT_API_URL=https://${{ vars.DOMAIN_API }} \
+            --build-arg VITE_DASHBOARD_API_URL=https://${{ vars.DOMAIN_DASH_API }} \
             --build-arg VITE_INSTANCE_ID=${{ vars.INSTANCE_ID }} \
             --build-arg VITE_INSTANCE_CLIENT_NAME="${{ vars.INSTANCE_CLIENT_NAME }}" \
+            --build-arg VITE_CLIENT_TITLE="${{ vars.VITE_CLIENT_TITLE }}" \
+            --build-arg VITE_CLIENT_DESCRIPTION="${{ vars.VITE_CLIENT_DESCRIPTION }}" \
             -t ghcr.io/${{ github.repository_owner }}/aivoice-client:$INSTANCE_TAG ./client
           docker push ghcr.io/${{ github.repository_owner }}/aivoice-client:$INSTANCE_TAG
 
@@ -40,7 +42,8 @@ jobs:
         run: |
           export INSTANCE_TAG=$(echo "${{ vars.INSTANCE_ID }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]//g')
           docker build \
-            --build-arg VITE_API_URL=https://${{ secrets.DOMAIN_DASH_API }}/api \
+          docker build \
+            --build-arg VITE_API_URL=https://${{ vars.DOMAIN_DASH_API }}/api \
             --build-arg VITE_INSTANCE_ID=${{ vars.INSTANCE_ID }} \
             --build-arg VITE_INSTANCE_CLIENT_NAME="${{ vars.INSTANCE_CLIENT_NAME }}" \
             -t ghcr.io/${{ github.repository_owner }}/aivoice-dashboard:$INSTANCE_TAG ./dashboard -f ./dashboard/Dockerfile.prod
@@ -66,17 +69,59 @@ jobs:
             export INSTANCE_ID=$(echo "$INSTANCE_ID_RAW" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]//g')
             
             export INSTANCE_CLIENT_NAME="${{ vars.INSTANCE_CLIENT_NAME }}"
-            export DOMAIN_WEBSITE="${{ secrets.DOMAIN_WEBSITE }}"
-            export DOMAIN_API="${{ secrets.DOMAIN_API }}"
-            export DOMAIN_DASHBOARD="${{ secrets.DOMAIN_DASHBOARD }}"
-            export DOMAIN_DASH_API="${{ secrets.DOMAIN_DASH_API }}"
+            export DOMAIN_WEBSITE="${{ vars.DOMAIN_WEBSITE }}"
+            export DOMAIN_API="${{ vars.DOMAIN_API }}"
+            export DOMAIN_DASHBOARD="${{ vars.DOMAIN_DASHBOARD }}"
+            export DOMAIN_DASHBOARD="${{ vars.DOMAIN_DASHBOARD }}"
+            export DOMAIN_DASH_API="${{ vars.DOMAIN_DASH_API }}"
             export GITHUB_REPOSITORY_OWNER="${{ github.repository_owner }}"
+
+            # Secrets de Runtime (Injetadas pelo CI/CD para independência do .env local)
+            export DB_USER="${{ secrets.DB_USER }}"
+            export DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
+            export DB_NAME="${{ secrets.DB_NAME }}"
+            export JWT_SECRET="${{ secrets.JWT_SECRET }}"
+            export MEILI_MASTER_KEY="${{ secrets.MEILI_MASTER_KEY }}"
             
             # Define o nome do projeto para que redes/volumes sejam únicos (Isolamento Real)
             export COMPOSE_PROJECT_NAME="aivoice_$INSTANCE_ID"
             
             mkdir -p /opt/$INSTANCE_ID_RAW
             cd /opt/$INSTANCE_ID_RAW
+
+            # --- CORREÇÃO CRÍTICA DE ROTEAMENTO (404) ---
+            # Força a criação de um .env dinâmico para garantir que o docker-compose enxergue as variáveis
+            # Isso sobrescreve qualquer .env antigo ou incompleto no servidor
+            echo "Gerando .env dinâmico para deploy..."
+            cat <<EOF > .env
+            INSTANCE_ID=$INSTANCE_ID
+            INSTANCE_CLIENT_NAME=$INSTANCE_CLIENT_NAME
+            COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME
+            
+            # Domínios
+            DOMAIN_WEBSITE=$DOMAIN_WEBSITE
+            DOMAIN_API=$DOMAIN_API
+            DOMAIN_DASHBOARD=$DOMAIN_DASHBOARD
+            DOMAIN_DASH_API=$DOMAIN_DASH_API
+            
+            # Variáveis do GitHub
+            GITHUB_REPOSITORY_OWNER=$GITHUB_REPOSITORY_OWNER
+            
+            # Variáveis Injetadas pelo Build (Vite) mas necessárias no Runtime se referenciadas
+            VITE_CLIENT_TITLE="${{ vars.VITE_CLIENT_TITLE }}"
+            VITE_CLIENT_DESCRIPTION="${{ vars.VITE_CLIENT_DESCRIPTION }}"
+            VITE_INSTANCE_CLIENT_NAME="${{ vars.INSTANCE_CLIENT_NAME }}"
+            
+            # Secrets (DB/JWT/Meili)
+            DB_USER=$DB_USER
+            DB_PASSWORD=$DB_PASSWORD
+            DB_NAME=$DB_NAME
+            JWT_SECRET=$JWT_SECRET
+            MEILI_MASTER_KEY=$MEILI_MASTER_KEY
+            
+            # Portas Dinâmicas (Se não definidas, usa defaults do docker-compose)
+            # (Adicione aqui se precisar controlar portas via GitHub Vars)
+            EOF
             
             # Baixa arquivos atualizados diretamente do GitHub
             echo "📥 Atualizando arquivos de configuração para $INSTANCE_ID..."
