@@ -42,7 +42,6 @@ jobs:
         run: |
           export INSTANCE_TAG=$(echo "${{ vars.INSTANCE_ID }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]//g')
           docker build \
-          docker build \
             --build-arg VITE_API_URL=https://${{ vars.DOMAIN_DASH_API }}/api \
             --build-arg VITE_INSTANCE_ID=${{ vars.INSTANCE_ID }} \
             --build-arg VITE_INSTANCE_CLIENT_NAME="${{ vars.INSTANCE_CLIENT_NAME }}" \
@@ -71,7 +70,6 @@ jobs:
             export INSTANCE_CLIENT_NAME="${{ vars.INSTANCE_CLIENT_NAME }}"
             export DOMAIN_WEBSITE="${{ vars.DOMAIN_WEBSITE }}"
             export DOMAIN_API="${{ vars.DOMAIN_API }}"
-            export DOMAIN_DASHBOARD="${{ vars.DOMAIN_DASHBOARD }}"
             export DOMAIN_DASHBOARD="${{ vars.DOMAIN_DASHBOARD }}"
             export DOMAIN_DASH_API="${{ vars.DOMAIN_DASH_API }}"
             export GITHUB_REPOSITORY_OWNER="${{ github.repository_owner }}"
