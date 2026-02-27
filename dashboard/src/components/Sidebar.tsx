@@ -31,7 +31,7 @@ export default function Sidebar() {
             {/* Logo Area */}
             <div className="h-16 flex items-center px-6 border-b border-white/5">
                 <img
-                    src="https://res.cloudinary.com/dco1sm3hy/image/upload/v1770670094/etheclog_logo_adubqs.png"
+                    src={import.meta.env.VITE_IMG_LOGO_MAIN}
                     alt={import.meta.env.VITE_INSTANCE_CLIENT_NAME || 'EtechLog'}
                     className="h-auto max-h-12 w-auto object-contain"
                 />

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -354,7 +353,6 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				return fmt.Errorf("Gemini Read error: %w", err)
 			}
 
-			// log.Printf("📥 Gemini RAW: %s", string(message)) // Descomente para debug pesado
 
 			var serverMsg protocol.ServerMessage
 			if err := json.Unmarshal(message, &serverMsg); err != nil {
@@ -554,7 +552,7 @@ func (s *Session) processServerContent(sc *protocol.ServerContent) {
 		// CHECKPOINT: Sincroniza o histórico, tokens e duração a cada fim de turno
 		go func(id string, cName string, t []map[string]interface{}, it, ot int, st time.Time, status string) {
 			duration := int(time.Since(st).Seconds())
-			syncWithDashboard(id, cName, t, duration, it, ot, status)
+			persistCallHistory(id, cName, t, duration, it, ot, status)
 		}(s.ID, s.ClientName, append([]map[string]interface{}{}, s.Transcript...), s.InputTokens, s.OutputTokens, s.StartTime, s.Status)
 		
 		if s.ShouldTerm {
@@ -641,41 +639,55 @@ func (s *Session) Cleanup() {
 	s.TranscriptLock.Unlock()
 
 	log.Printf("🏁 Cleanup Sessão: %s | Status: %s | Msgs: %d", s.ID, currentStatus, len(currentTranscript))
-	syncWithDashboard(s.ID, s.ClientName, currentTranscript, duration, inputTokens, outputTokens, currentStatus)
+	persistCallHistory(s.ID, s.ClientName, currentTranscript, duration, inputTokens, outputTokens, currentStatus)
 }
 
-func syncWithDashboard(sessionID string, clientName string, transcript []map[string]interface{}, duration, inputTokens, outputTokens int, status string) {
-	dashboardURL := os.Getenv("DASHBOARD_INTERNAL_URL")
-	if dashboardURL == "" {
-		dashboardURL = "http://dashboard-server:8081"
-	}
-	
+func persistCallHistory(sessionID string, clientName string, transcript []map[string]interface{}, duration, inputTokens, outputTokens int, status string) {
 	if transcript == nil {
 		transcript = []map[string]interface{}{}
 	}
 
-	syncPayload := map[string]interface{}{
-		"callId":          sessionID,
-		"clientName":      clientName,
-		"newTranscript":   transcript,
-		"durationSeconds": duration,
-		"inputTokens":     inputTokens,
-		"outputTokens":    outputTokens,
-		"status":          status,
+	transcriptJSON, err := json.Marshal(transcript)
+	if err != nil {
+		log.Printf("❌ Erro ao serializar transcript para persistência: %v", err)
+		return
 	}
 
-	payloadBytes, _ := json.Marshal(syncPayload)
-	
-	client := http.Client{
-		Timeout: 5 * time.Second,
+	// Consulta o ID do cliente (cache simples ou query rápida)
+	var clientID int
+	err = db.QueryRow(context.Background(), "SELECT id FROM aiVoice_clients WHERE name=$1", clientName).Scan(&clientID)
+	if err != nil {
+		log.Printf("❌ Erro ao buscar ID do cliente %s para persistência: %v", clientName, err)
+		return
 	}
-	
-	resp, err := client.Post(dashboardURL+"/api/calls/sync", "application/json", bytes.NewBuffer(payloadBytes))
-	if err == nil {
-		defer resp.Body.Close()
-		log.Printf("✅ Dash Sync [%s]: OK (Status API: %d)", sessionID, resp.StatusCode)
+
+	query := `
+		INSERT INTO aiVoice_calls (call_id, client_id, transcript, duration_seconds, input_tokens, output_tokens, status, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+		ON CONFLICT (call_id) DO UPDATE SET
+			transcript = EXCLUDED.transcript,
+			duration_seconds = EXCLUDED.duration_seconds,
+			input_tokens = EXCLUDED.input_tokens,
+			output_tokens = EXCLUDED.output_tokens,
+			status = EXCLUDED.status,
+			updated_at = NOW();
+	`
+
+	_, err = db.Exec(context.Background(), query, 
+		sessionID, 
+		clientID, 
+		transcriptJSON, 
+		duration, 
+		inputTokens, 
+		outputTokens, 
+		status,
+	)
+
+	if err != nil {
+		log.Printf("❌ Erro ao persistir histórico no DB [%s]: %v", sessionID, err)
 	} else {
-		log.Printf("❌ Dash Error [%s]: %v", sessionID, err)
+		// Log discreto para evitar flood, mas útil para debug
+		// log.Printf("✅ Histórico persistido [%s] - Status: %s", sessionID, status)
 	}
 }
 

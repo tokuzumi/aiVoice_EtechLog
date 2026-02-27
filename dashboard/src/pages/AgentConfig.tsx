@@ -95,7 +95,7 @@ export default function AgentConfig() {
                         <div className="flex justify-center mt-2 mb-8 shrink-0">
                             <div className="h-32 w-32 rounded-full overflow-hidden shadow-2xl relative">
                                 <img
-                                    src="https://res.cloudinary.com/dco1sm3hy/image/upload/v1770785437/logomarca_etechlog_ghzjhw.png"
+                                    src={import.meta.env.VITE_IMG_AGENT_AVATAR_LARGE}
                                     alt="EtechLog Logo"
                                     className="h-full w-full object-contain p-2"
                                 />

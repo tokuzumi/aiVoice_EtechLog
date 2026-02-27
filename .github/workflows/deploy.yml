@@ -35,6 +35,8 @@ jobs:
             --build-arg VITE_INSTANCE_CLIENT_NAME="${{ vars.INSTANCE_CLIENT_NAME }}" \
             --build-arg VITE_CLIENT_TITLE="${{ vars.VITE_CLIENT_TITLE }}" \
             --build-arg VITE_CLIENT_DESCRIPTION="${{ vars.VITE_CLIENT_DESCRIPTION }}" \
+            --build-arg VITE_IMG_LOGO_MAIN="${{ vars.VITE_IMG_LOGO_MAIN }}" \
+            --build-arg VITE_IMG_CHAT_HEADER="${{ vars.VITE_IMG_CHAT_HEADER }}" \
             -t ghcr.io/${{ github.repository_owner }}/aivoice-client:$INSTANCE_TAG ./client
           docker push ghcr.io/${{ github.repository_owner }}/aivoice-client:$INSTANCE_TAG
 
@@ -45,6 +47,8 @@ jobs:
             --build-arg VITE_API_URL=https://${{ vars.DOMAIN_DASH_API }}/api \
             --build-arg VITE_INSTANCE_ID=${{ vars.INSTANCE_ID }} \
             --build-arg VITE_INSTANCE_CLIENT_NAME="${{ vars.INSTANCE_CLIENT_NAME }}" \
+            --build-arg VITE_IMG_LOGO_MAIN="${{ vars.VITE_IMG_LOGO_MAIN }}" \
+            --build-arg VITE_IMG_AGENT_AVATAR_LARGE="${{ vars.VITE_IMG_AGENT_AVATAR_LARGE }}" \
             -t ghcr.io/${{ github.repository_owner }}/aivoice-dashboard:$INSTANCE_TAG ./dashboard -f ./dashboard/Dockerfile.prod
           docker push ghcr.io/${{ github.repository_owner }}/aivoice-dashboard:$INSTANCE_TAG
 
@@ -109,6 +113,9 @@ jobs:
             VITE_CLIENT_TITLE="${{ vars.VITE_CLIENT_TITLE }}"
             VITE_CLIENT_DESCRIPTION="${{ vars.VITE_CLIENT_DESCRIPTION }}"
             VITE_INSTANCE_CLIENT_NAME="${{ vars.INSTANCE_CLIENT_NAME }}"
+            VITE_IMG_LOGO_MAIN="${{ vars.VITE_IMG_LOGO_MAIN }}"
+            VITE_IMG_CHAT_HEADER="${{ vars.VITE_IMG_CHAT_HEADER }}"
+            VITE_IMG_AGENT_AVATAR_LARGE="${{ vars.VITE_IMG_AGENT_AVATAR_LARGE }}"
             
             # Secrets (DB/JWT/Meili)
             DB_USER=$DB_USER

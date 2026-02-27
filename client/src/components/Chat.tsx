@@ -1,8 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, User, Bot } from 'lucide-react';
-import { Message } from '../hooks/useMessageManager';
-
+import { Message } from '../lib/AiVoiceCore';
 interface ChatProps {
     messages: Message[];
     onSendMessage: (text: string) => void;
@@ -47,7 +46,7 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage, isVisible }
                             {/* Header */}
                             <div className="p-4 pl-6 border-b border-white/5 flex items-center justify-start">
                                 <img
-                                    src="https://res.cloudinary.com/dco1sm3hy/image/upload/v1770785207/logo_texto_q4jiwm.png"
+                                    src={import.meta.env.VITE_IMG_CHAT_HEADER}
                                     alt="EtechLog"
                                     className="h-6 w-auto opacity-90 object-contain"
                                 />

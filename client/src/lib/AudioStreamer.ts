@@ -77,6 +77,7 @@ export class AudioStreamer {
     }
 
     private createAudioBuffer(audioData: Float32Array): AudioBuffer {
+        // A API Gemini Audio retorna PCM, padronizamos canais originais do dispositivo (default: estéreo) 
         const audioBuffer = this.context.createBuffer(1, audioData.length, this.sampleRate);
         audioBuffer.getChannelData(0).set(audioData);
         return audioBuffer;

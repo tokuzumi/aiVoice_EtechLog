@@ -66,8 +66,7 @@ func initMeiliSearch() {
         time.Sleep(2 * time.Second)
     }
 
-    // 0. Enable Experimental Features (Vector Store)
-    enableExperimental()
+    // 0. Enable Experimental Features (Vector Store) - Native in v1.35+, no action needed.
 
 	// 1. Create Index if not exists
 	createIndexURL := fmt.Sprintf("%s/indexes", meiliHost)
@@ -137,10 +136,6 @@ func configureSettings() {
 	}
 }
 
-func enableExperimental() {
-	// Em versões recentes (v1.13+), a busca vetorial pode ser ativada configurando os embedders diretamente.
-	// Outras features experimentais podem ser ativadas aqui se o campo existir no v1.35.0.
-}
 
 
 // -- Meili Helpers --
@@ -239,16 +234,7 @@ func handleKnowledge(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleKnowledgeItem(w http.ResponseWriter, r *http.Request) {
-    // Basic extraction from URL since we are using stdlib http.HandleFunc in main. 
-    // Wait, main.go uses http.HandleFunc which doesn't parse params easily.
-    // I'll assume we pass ID via query param or simple path logic in main if I don't use Chi.
-    // However, looking at main.go, it uses standard lib. I will parse ID from URL path manually or query param.
-    // Let's stick to query param `?id=` for DELETE/PUT for simplicity with stdlib or parse path suffix.
-    
-    // Better strategy for stdlib: 
-    // If routing is /api/dashboard/knowledge/
-    // We can parse the ID from the end.
-
+    // Extract ID from query param
     idStr := r.URL.Query().Get("id")
     if idStr == "" {
         http.Error(w, "ID required", http.StatusBadRequest)

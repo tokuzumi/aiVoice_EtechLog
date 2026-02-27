@@ -50,16 +50,6 @@ func GetInitialSetup(ctx context.Context, db *pgxpool.Pool, clientName string) (
         }
 	}
     
-    // Double check if cfg is nil (e.g. valid query but no rows found)
-    if cfg == nil {
-        cfg = &AIConfig{
-			VoiceName: "Aoede", 
-			LanguageCode: "pt-BR", 
-			Temperature: 0.7,
-			SystemPrompt: fmt.Sprintf("Você é o %s, um assistente de voz avançado criado pelo estúdio TkzM.", clientName),
-			DocstringToolKnowledge: fmt.Sprintf("Invoque esta ferramenta sempre que o usuário tiver dúvidas sobre o %s.", clientName),
-		}
-    }
 
 	cats, err := fetchAllCategories(ctx, db)
 	// If categories fail, we can just use "all" or empty. Non-critical.

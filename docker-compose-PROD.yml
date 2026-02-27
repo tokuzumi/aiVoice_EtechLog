@@ -65,6 +65,16 @@ services:
 
   client:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/aivoice-client:${INSTANCE_ID}
+    build:
+      context: ./client
+      args:
+        - VITE_AGENT_API_URL=https://${DOMAIN_API}
+        - VITE_DASHBOARD_API_URL=https://${DOMAIN_DASH_API}
+        - VITE_INSTANCE_CLIENT_NAME=${INSTANCE_CLIENT_NAME:-EtechLog}
+        - VITE_IMG_LOGO_MAIN
+        - VITE_IMG_CHAT_HEADER
+        - VITE_CLIENT_TITLE=${VITE_CLIENT_TITLE:-EtechLog}
+        - VITE_CLIENT_DESCRIPTION=${VITE_CLIENT_DESCRIPTION:-Agente de Voz}
     container_name: website_${INSTANCE_ID}
     restart: always
     networks:
@@ -81,6 +91,14 @@ services:
 
   dashboard:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/aivoice-dashboard:${INSTANCE_ID}
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile.prod
+      args:
+        - VITE_API_URL=https://${DOMAIN_DASH_API}/api
+        - VITE_INSTANCE_CLIENT_NAME=${INSTANCE_CLIENT_NAME:-EtechLog}
+        - VITE_IMG_LOGO_MAIN
+        - VITE_IMG_AGENT_AVATAR_LARGE
     container_name: dashboard_${INSTANCE_ID}
     restart: always
     networks:

@@ -38,6 +38,10 @@ services:
         - VITE_AGENT_API_URL=http://localhost:${PORT_BACKEND:-8080}
         - VITE_DASHBOARD_API_URL=http://localhost:${PORT_DASHSERVER:-8081}
         - VITE_INSTANCE_CLIENT_NAME=${INSTANCE_CLIENT_NAME:-aiVoice}
+        - VITE_IMG_LOGO_MAIN
+        - VITE_IMG_CHAT_HEADER
+        - VITE_CLIENT_TITLE=${VITE_CLIENT_TITLE:-EtechLog}
+        - VITE_CLIENT_DESCRIPTION=${VITE_CLIENT_DESCRIPTION:-Agente de Voz}
     container_name: website_${INSTANCE_ID}
     ports:
       - "${PORT_CLIENT:-5173}:5173"
@@ -64,6 +68,9 @@ services:
       dockerfile: Dockerfile.prod
       args:
         - VITE_API_URL=http://localhost:${PORT_DASHSERVER:-8081}/api
+        - VITE_INSTANCE_CLIENT_NAME=${INSTANCE_CLIENT_NAME:-aiVoice}
+        - VITE_IMG_LOGO_MAIN
+        - VITE_IMG_AGENT_AVATAR_LARGE
     container_name: dashboard_${INSTANCE_ID}
     ports:
       - "${PORT_DASHBOARD:-5174}:5174"

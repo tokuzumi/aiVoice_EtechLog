@@ -46,4 +46,5 @@ Este documento lista **todas** as configurações necessárias no repositório G
 3.  Na aba **Secrets**, crie/atualize os itens da seção 2.
 4.  Dispare o workflow `deploy.yml`.
 
-> ⚠️ **Nota:** O arquivo `deploy.yml` foi configurado para injetar automaticamente essas secrets no ambiente de execução do Docker, garantindo que o servidor não precise de arquivos `.env` manuais para rodar.
+> ⚠️ **Nota Importante:** O arquivo `deploy.yml` gera automaticamente um arquivo `.env` dinâmico no servidor a cada deploy.
+> **NÃO CRIE ou EDITE arquivos `.env` manualmente no servidor**, pois eles serão sobrescritos. Gerencie tudo via GitHub Variables/Secrets.

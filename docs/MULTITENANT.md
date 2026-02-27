@@ -12,6 +12,8 @@ INSTANCE_ID=aivoice
 INSTANCE_CLIENT_NAME=aiVoice
 VITE_INSTANCE_ID=aivoice
 VITE_INSTANCE_CLIENT_NAME=aiVoice
+VITE_CLIENT_TITLE="aiVoice - Agente Inteligente"
+VITE_CLIENT_DESCRIPTION="Agente de voz avançado para atendimento high-ticket."
 COMPOSE_PROJECT_NAME=aivoice_v3
 
 # Portas de Ofuscação (Expostas) - Devem ser ÚNICAS no host
@@ -30,6 +32,7 @@ GOOGLE_LOCATION=us-central1
 GEMINI_API_KEY=SUA_CHAVE_AQUI
 
 # Domínios (Traefik) - Apenas para Produção
+# Em CI/CD, configure estes valores nas "Variables" do GitHub
 DOMAIN_WEBSITE=aivoice.com.br
 DOMAIN_API=api.aivoice.com.br
 DOMAIN_DASHBOARD=dash.aivoice.com.br
@@ -67,12 +70,13 @@ O sistema utiliza o `COMPOSE_PROJECT_NAME` para criar redes e volumes isolados a
 ## 3. GitHub CI/CD (Onboarding)
 Configure as seguintes variáveis no GitHub em **Settings > Secrets and variables > Actions**:
 
-#### Aba "Variables" (Para visibilidade nos logs)
+#### Aba "Variables" (Para visibilidade e Configurações Públicas)
 *   `INSTANCE_ID`: ID em minúsculas (ex: `aivoicev3`).
 *   `INSTANCE_CLIENT_NAME`: Nome amigável (ex: `aiVoice`).
+*   `DOMAIN_WEBSITE`, `DOMAIN_API`, `DOMAIN_DASHBOARD`, `DOMAIN_DASH_API`: Domínios públicos.
+*   `VITE_CLIENT_TITLE`, `VITE_CLIENT_DESCRIPTION`: Branding Dinâmico.
 
-#### Aba "Secrets" (Dados Sensíveis)
-*   `DOMAIN_WEBSITE`, `DOMAIN_API`, `DOMAIN_DASHBOARD`, `DOMAIN_DASH_API`
+#### Aba "Secrets" (Dados Sensíveis Criptografados)
 *   `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DATABASE_URL`
 *   `JWT_SECRET`, `MEILI_MASTER_KEY`
 

@@ -435,47 +435,21 @@ func handleSync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := `
-		INSERT INTO aiVoice_calls (call_id, client_id, transcript, duration_seconds, input_tokens, output_tokens, status)
-		VALUES (
-			$1, 
-			(SELECT id FROM aiVoice_clients WHERE name = $2), 
-			$3, 
-			$4, 
-			$5, 
-			$6, 
-			$7
-		)
-		ON CONFLICT (call_id) DO UPDATE SET
-			transcript = EXCLUDED.transcript,
-			duration_seconds = EXCLUDED.duration_seconds,
-			input_tokens = EXCLUDED.input_tokens,
-			output_tokens = EXCLUDED.output_tokens,
-			status = EXCLUDED.status,
-			updated_at = NOW();
-	`
+	// --- MODIFICAÇÃO DE SEGURANÇA ---
+	// O Frontend (client) não tem mais permissão para atualizar o histórico.
+	// A responsabilidade é exclusiva do Backend (Orchestrator).
+	// Retornamos 200 OK para manter compatibilidade com versões antigas do client sem quebrar a UI.
+	
+	log.Printf("[SYNC IGNORED] Ignorando payload do frontend para Call %s (Backend-Only Persistence Active)", req.CallID)
 
-	res, err := db.Exec(context.Background(), query, 
-		req.CallID, 
-		req.ClientName, 
-		req.NewTranscript, 
-		req.DurationSecond, 
-		req.InputTokens, 
-		req.OutputTokens, 
-		req.Status,
-	)
-
-	if err != nil {
-		log.Printf("[SYNC ERROR] Erro no UPSERT SQL para Call %s: %v", req.CallID, err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	affected := res.RowsAffected()
-	log.Printf("[SYNC SUCCESS] Call %s processada. Rows affected: %d", req.CallID, affected)
+	/* 
+	// CÓDIGO ANTIGO DESATIVADO:
+	query := `...`
+	res, err := db.Exec(...)
+	*/
 
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, "Synced")
+	fmt.Fprint(w, "Synced (Ignored by Backend Policy)")
 }
 
 func handleConfig(w http.ResponseWriter, r *http.Request) {

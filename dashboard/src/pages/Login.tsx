@@ -51,7 +51,7 @@ export default function Login() {
                     {/* Logo - 80% Width */}
                     <div className="w-full flex justify-center lg:justify-start mb-10">
                         <img
-                            src="https://res.cloudinary.com/dco1sm3hy/image/upload/v1757012939/aiVoice_white_h1iae6.png"
+                            src={import.meta.env.VITE_IMG_LOGO_MAIN || "https://res.cloudinary.com/dco1sm3hy/image/upload/v1757012939/aiVoice_white_h1iae6.png"}
                             alt={import.meta.env.VITE_INSTANCE_CLIENT_NAME || 'aiVoice'}
                             className="w-[80%] h-auto"
                         />
